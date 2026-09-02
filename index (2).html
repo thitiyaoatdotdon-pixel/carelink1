@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareLink - แพลตฟอร์มหาพยาบาล ผู้ดูแล และพี่เลี้ยงเด็กอิสระทั่วไทย</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- ส่วนหัว (Navbar) -->
+    <nav class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-teal-600 flex items-center gap-2 cursor-pointer" onclick="showSection('home')">
+                🩺 CareLink
+            </div>
+            <div class="space-x-6 hidden md:flex">
+                <button onclick="showSection('home')" class="hover:text-teal-600 font-medium">หน้าแรก</button>
+                <button onclick="showSection('services')" class="hover:text-teal-600 font-medium">บริการของเรา & รายละเอียด</button>
+                <button onclick="scrollToNurses()" class="hover:text-teal-600 font-medium">หาผู้ดูแล / พี่เลี้ยง</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- ปุ่มเข้าสู่ระบบผู้จอง (แสดงเมื่อยังไม่ล็อกอิน) -->
+                <div id="customerAuthBtnArea">
+                    <button onclick="openCustomerAuth()" class="text-teal-600 border border-teal-600 px-4 py-2 rounded-full hover:bg-teal-50 transition text-sm font-medium">เข้าสู่ระบบ / สมัครสมาชิก (ผู้จอง)</button>
+                </div>
+                <!-- เมนูโปรไฟล์ผู้จอง (แสดงเมื่อล็อกอินแล้ว) -->
+                <div id="customerProfileArea" class="hidden flex items-center gap-3">
+                    <button onclick="showSection('customer-dashboard')" class="bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 hover:bg-teal-100 transition">
+                        <span>👤</span> <span id="navCustomerPhone">ผู้จอง</span> (แดชบอร์ด)
+                    </button>
+                    <button onclick="logoutCustomer()" class="text-slate-400 hover:text-red-500 text-xs font-medium">ออกจากระบบ</button>
+                </div>
+                <button onclick="openRegister()" class="bg-teal-600 text-white px-4 py-2 rounded-full shadow hover:bg-teal-700 transition text-sm font-medium hidden sm:inline-block">สมัครเป็นผู้ให้บริการ</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- หน้าแรก & ค้นหา -->
+    <div id="section-home">
+        <header class="bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-16 px-4 text-center">
+            <div class="max-w-3xl mx-auto">
+                <h1 class="text-3xl md:text-5xl font-bold mb-4">พยาบาล ผู้ดูแลผู้ป่วย และพี่เลี้ยงเด็กอิสระ ใกล้บ้านคุณ</h1>
+                <p class="text-teal-100 mb-8 text-lg">ปลอดภัย มั่นใจ ตรวจสอบประวัติ ใบประกอบวิชาชีพ และประวัติอาชญากรรมแล้วทุกท่าน</p>
+                
+                <div class="bg-white p-4 rounded-2xl shadow-lg flex flex-col md:flex-row gap-3">
+                    <select id="serviceType" class="flex-1 p-3 border rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="">-- เลือกประเภทการดูแล --</option>
+                        <option value="rn">พยาบาลวิชาชีพ (RN)</option>
+                        <option value="pn">ผู้ช่วยพยาบาล (PN)</option>
+                        <option value="caregiver">Caregiver - ผู้ดูแลผู้สูงอายุ</option>
+                        <option value="babysitter">พี่เลี้ยงเด็ก / Babysitter</option>
+                    </select>
+                    
+                    <select id="provinceSelect" class="flex-1 p-3 border rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="">-- เลือกจังหวัดทั้งหมด 77 จังหวัด --</option>
+                    </select>
+
+                    <button onclick="searchNurse()" class="bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition">ค้นหาเลย</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- รายชื่อผู้ให้บริการ -->
+        <main class="max-w-6xl mx-auto px-4 py-12" id="nurses">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 id="resultTitle" class="text-2xl font-bold text-slate-700">บุคลากรและพี่เลี้ยงพร้อมให้บริการ (กว่า 50+ ท่านในพื้นที่)</h2>
+                    <p id="resultSub" class="text-xs text-slate-500 mt-1">กำลังแสดงผลผู้ให้บริการทั้งหมดในระบบ</p>
+                </div>
+                <div class="text-sm text-teal-600 font-semibold bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">
+                    รวมกว่า 3,850+ ท่านทั่วประเทศ
+                </div>
+            </div>
+            
+            <div id="nurseGrid" class="grid grid-cols-1 md:grid-cols-4 gap-6"></div>
+
+            <div class="flex justify-center items-center gap-2 mt-8" id="paginationContainer"></div>
+        </main>
+    </div>
+
+    <!-- หน้าบริการของเรา & รายละเอียดพยาบาล -->
+    <div id="section-services" class="max-w-6xl mx-auto px-4 py-12 hidden">
+        <h2 class="text-3xl font-bold mb-2 text-teal-600">บริการของเรา และคำอธิบายรายละเอียดบุคลากร</h2>
+        <p class="text-slate-500 mb-8">ทำความเข้าใจหน้าที่ ทักษะ และขอบเขตการทำงานของบุคลากรแต่ละหน่วยงานเพื่อการเลือกใช้อย่างเหมาะสม</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-teal-500 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-xl">👩‍⚕️</div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">พยาบาลวิชาชีพ (RN - Registered Nurse)</h3>
+                        <p class="text-xs text-teal-600 font-medium">อัตราค่าบริการเริ่มต้น 800 - 1,200 บาท / กะ หรือรายชั่วโมง</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    สำเร็จการศึกษาปริญญาตรีสาขาพยาบาลศาสตร์และมีใบประกอบวิชาชีพชั้นหนึ่ง เชี่ยวชาญการดูแลผู้ป่วยวิกฤต ผู้ป่วยหลังผ่าตัด ทำแผลกดทับระดับรุนแรง และให้อาหารทางสายยาง พร้อมประเมินอาการเปลี่ยนแปลงทางคลินิกอย่างใกล้ชิด
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-cyan-500 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center text-cyan-600 font-bold text-xl">🧑‍⚕️</div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">ผู้ช่วยพยาบาล (PN - Practical Nurse)</h3>
+                        <p class="text-xs text-cyan-600 font-medium">อัตราค่าบริการเริ่มต้น 600 - 800 บาท / กะ หรือรายชั่วโมง</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    ผ่านการอบรมหลักสูตรประกาศนียบัตรผู้ช่วยพยาบาลจากสถาบันที่กระทรวงสาธารณสุขรับรอง เหมาะสำหรับผู้ป่วยติดเตียง วัดสัญญาณชีพ พลิกตัวป้องกันแผลกดทับ และช่วยเหลือกิจวัตรประจำวันภายใต้การกำกับดูแล
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-emerald-500 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 font-bold text-xl">👵</div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">Caregiver (ผู้ดูแลผู้สูงอายุ)</h3>
+                        <p class="text-xs text-emerald-600 font-medium">อัตราค่าบริการเริ่มต้น 500 บาท / กะ หรือรายชั่วโมง</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    ผ่านการอบรมหลักสูตร Caregiver เน้นดูแลกิจวัตรประจำวันของผู้สูงอายุ ป้อนยา พาเดินเล่นออกกำลังกาย และมีจิตวิทยาในการพูดคุยดูแลผู้สูงอายุเพื่อป้องกันภาวะซึมเศร้า
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-pink-500 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-xl">👶</div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">พี่เลี้ยงเด็ก / Babysitter (Nanny)</h3>
+                        <p class="text-xs text-pink-600 font-medium">อัตราค่าบริการเริ่มต้น 600 บาท / กะ หรือรายชั่วโมง</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    ผู้เชี่ยวชาญด้านการดูแลเด็กเล็กผ่านการอบรมปฐมพยาบาลเด็ก (Pediatric CPR) และการเสริมสร้างพัฒนาการตามวัย มีความสะอาด อ่อนโยน เข้าใจจิตวิทยาเด็ก
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- หน้า Dashboard ของผู้จองบริการ -->
+    <div id="section-customer-dashboard" class="max-w-5xl mx-auto px-4 py-12 hidden">
+        <div class="bg-white rounded-2xl shadow-sm border p-6 md:p-8 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="bg-teal-100 text-teal-700 px-2.5 py-0.5 rounded-full text-xs font-bold">✓ บัญชีผู้จองบริการ</span>
+                        <span class="text-xs text-slate-400">ยืนยันตัวตนด้วย OTP แล้ว</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800">แดชบอร์ดจัดการการจองของคุณ</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">เบอร์โทรศัพท์ติดต่อหลัก: <span id="dashPhoneDisplay" class="font-semibold text-slate-700">089-123-xxxx</span></p>
+                </div>
+                <button onclick="showSection('home')" class="bg-teal-600 text-white px-4 py-2.5 rounded-xl text-xs font-medium hover:bg-teal-700 transition shadow-sm">
+                    🔍 ค้นหาผู้ดูแลเพิ่มเติม
+                </button>
+            </div>
+
+            <!-- สรุปสถิติการจอง -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+                <div class="bg-teal-50/60 border border-teal-100 p-4 rounded-xl">
+                    <p class="text-xs text-teal-700 font-medium">การจองที่กำลังดำเนินอยู่</p>
+                    <p id="statActiveCount" class="text-2xl font-bold text-teal-900 mt-1">1 รายการ</p>
+                </div>
+                <div class="bg-slate-50 border p-4 rounded-xl">
+                    <p class="text-xs text-slate-500 font-medium">บริการที่เคยใช้ทั้งหมด</p>
+                    <p id="statTotalCount" class="text-2xl font-bold text-slate-800 mt-1">2 รายการ</p>
+                </div>
+                <div class="bg-emerald-50/60 border border-emerald-100 p-4 rounded-xl">
+                    <p class="text-xs text-emerald-700 font-medium">สถานะความปลอดภัยบัญชี</p>
+                    <p class="text-sm font-bold text-emerald-900 mt-1">ปลอดภัยสูงสุด (Verified)</p>
+                </div>
+            </div>
+
+            <!-- รายการคิวงานของฉัน -->
+            <div class="space-y-4">
+                <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                    <span>📅</span> รายการจองและสถานะงานปัจจุบัน
+                </h3>
+
+                <div id="myBookingListContainer" class="space-y-3">
+                    <div class="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-teal-100 text-teal-700 text-[11px] font-bold px-2 py-0.5 rounded">กำลังปฏิบัติงาน</span>
+                                <span class="text-xs text-slate-400">รหัสจอง: #CL-89214</span>
+                            </div>
+                            <h4 class="font-bold text-base text-slate-800">คุณสมศรี ใจดี (พยาบาลวิชาชีพ RN)</h4>
+                            <p class="text-xs text-slate-600">📍 สถานที่: บ้านเลขที่ 12/3 ซอยพหลโยธิน แขวงลาดยาว เขตจตุจักร กรุงเทพฯ</p>
+                            <p class="text-xs text-slate-500">⏰ รูปแบบ: กะเช้า (08:00 - 20:00 น.) • เริ่มบริการ: 3 กันยายน 2569</p>
+                        </div>
+                        <div class="flex flex-col gap-2 w-full md:w-auto">
+                            <span class="text-xs font-bold text-teal-700 text-right">950 บาท (ชำระแล้ว)</span>
+                            <button onclick="alert('ระบบกำลังเชื่อมต่อแชทตรงกับคุณสมศรี ใจดี...')" class="bg-white border border-teal-600 text-teal-600 px-4 py-2 rounded-xl text-xs font-medium hover:bg-teal-50 transition">
+                                💬 ติดต่อผู้ให้บริการ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup แสดงประวัติและรีวิว 5 ท่านแบบไม่ซ้ำกัน -->
+    <div id="profileModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
+            <button onclick="closeProfile()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            
+            <div class="flex items-center gap-4 mb-4 border-b pb-4">
+                <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-2xl" id="modalIcon">👩‍⚕️</div>
+                <div>
+                    <h3 id="modalName" class="font-bold text-xl text-slate-800">ชื่อผู้ให้บริการ</h3>
+                    <p id="modalRole" class="text-sm text-teal-600 font-medium">ตำแหน่ง</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-sm text-slate-700 mb-6">
+                <div class="bg-teal-50/50 p-4 rounded-2xl border border-teal-100 space-y-2">
+                    <p class="font-bold text-teal-900 flex items-center gap-1.5"><span>🔒</span> ข้อมูลการตรวจสอบความน่าเชื่อถือ:</p>
+                    <p>• เลขที่ใบอนุญาต/ใบประกาศ: <span id="modalId" class="font-mono font-semibold text-slate-800"></span></p>
+                    <p>• ประสบการณ์ทำงาน: <span id="modalExp" class="font-semibold text-slate-800"></span></p>
+                    <p>• สถานที่ทำงานเดิม / แหล่งฝึกอบรม: <span class="font-semibold text-slate-800">โรงพยาบาลรัฐ / รพ.เอกชนชั้นนำ</span></p>
+                    <p>• คะแนนความพึงพอใจ: <span id="modalRating" class="font-semibold text-slate-800">⭐ 4.9 (50+ รีวิว)</span></p>
+                    <p>• อัตราค่าบริการ: <span id="modalRate" class="font-semibold text-teal-700"></span></p>
+                </div>
+
+                <div>
+                    <p class="font-bold text-slate-800 mb-1">📝 ประวัติความเชี่ยวชาญและผลงาน:</p>
+                    <p id="modalDesc" class="text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl"></p>
+                </div>
+
+                <div class="text-xs text-teal-700 bg-teal-50/60 border border-teal-200 p-3 rounded-xl flex items-center gap-2">
+                    <span>🛡️</span>
+                    <span>ผ่านการตรวจสอบประวัติอาชญากรรมจากสำนักงานตำรวจแห่งชาติ และยืนยันตัวตนด้วยบัตรประชาชนจริงด้วยระบบ CareLink</span>
+                </div>
+
+                <!-- ส่วนรีวิว 5 ท่านแบบไม่ซ้ำกัน -->
+                <div class="border-t pt-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <p class="font-bold text-slate-800 flex items-center gap-1.5"><span>💬</span> รีวิวประสบการณ์จริงจากผู้ใช้บริการ (5 เคสล่าสุด)</p>
+                        <span class="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">✓ ยืนยันตัวตนแล้วทั้งหมด</span>
+                    </div>
+                    
+                    <!-- พื้นที่แสดงรีวิว 5 คนไม่ซ้ำกัน -->
+                    <div class="space-y-3" id="reviewListContainer">
+                        <!-- จะถูกเติมด้วย JavaScript -->
+                    </div>
+
+                    <div class="bg-teal-50/40 p-3 rounded-xl border border-teal-100 mt-3">
+                        <p class="text-xs font-bold text-teal-900 mb-2">✍️ เพิ่มรีวิวประสบการณ์ของคุณ (หลังจากใช้บริการ)</p>
+                        <input type="text" id="reviewerName" placeholder="ชื่อของคุณ (เช่น คุณกุล, พี่เอ)" class="w-full p-2 border rounded-lg text-xs mb-2 bg-white">
+                        <textarea id="reviewText" rows="2" placeholder="เขียนเล่าความประทับใจหรือการปฏิบัติงานของผู้ให้บริการ..." class="w-full p-2 border rounded-lg text-xs mb-2 bg-white"></textarea>
+                        <button onclick="submitReview()" class="bg-teal-600 text-white px-4 py-1.5 rounded-lg text-xs hover:bg-teal-700 transition font-medium">ส่งรีวิว</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="openBooking()" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">จองใช้บริการกับท่านนี้</button>
+        </div>
+    </div>
+
+    <!-- Modal หน้าจอการจอง -->
+    <div id="bookingModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
+            <button onclick="closeBooking()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            
+            <h3 class="font-bold text-xl text-slate-800 mb-1">📅 ฟอร์มยืนยันการจองบริการ</h3>
+            <p class="text-xs text-slate-500 mb-4">กรุณากรอกข้อมูลสถานที่และรายละเอียดผู้รับบริการให้ครบถ้วน</p>
+
+            <div class="space-y-4 text-sm text-slate-700">
+                <div class="bg-teal-50/60 p-3 rounded-xl border border-teal-100 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-teal-600 font-medium">ผู้ให้บริการที่คุณเลือก</p>
+                        <p id="bookModalName" class="font-bold text-slate-800 text-base"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">เรทราคา</p>
+                        <p id="bookModalRate" class="font-bold text-teal-700 text-sm"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่เริ่มบริการ</label>
+                        <input type="date" id="bookDateInput" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รูปแบบกะการทำงาน</label>
+                        <select id="workShiftSelect" onchange="toggleHourlyInput()" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                            <option value="กะเช้า (08:00 - 20:00 น.)">กะเช้า (08:00 - 20:00 น.)</option>
+                            <option value="กะดึก (20:00 - 08:00 น.)">กะดึก (20:00 - 08:00 น.)</option>
+                            <option value="ประจำ 24 ชั่วโมง (Live-in)">ประจำ 24 ชั่วโมง (Live-in)</option>
+                            <option value="รายชั่วโมง">จองแบบรายชั่วโมง</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="hourlyInputContainer" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ระบุจำนวนชั่วโมงที่ต้องการจอง</label>
+                    <input type="number" id="hourlyCount" min="1" max="24" placeholder="เช่น 3 หรือ 4 ชั่วโมง" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">สถานที่ปฏิบัติงาน (ที่อยู่ผู้ป่วย/เด็ก)</label>
+                    <textarea id="bookAddressInput" rows="2" placeholder="บ้านเลขที่, ซอย, ถนน, แขวง/ตำบล, เขต/อำเภอ, จังหวัด" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อผู้รับบริการ (ผู้ป่วย/เด็ก)</label>
+                        <input type="text" placeholder="ระบุชื่อ-นามสกุล" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">อาการ / ความต้องการพิเศษ</label>
+                        <input type="text" placeholder="เช่น ผู้ป่วยติดเตียง, เด็กอายุ 2 ขวบ" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อผู้จอง (ติดต่อ)</label>
+                        <input type="text" id="bookerName" placeholder="ชื่อของคุณ" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์มือถือ (รับ OTP)</label>
+                        <input type="tel" id="bookerPhone" placeholder="0xx-xxx-xxxx" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+
+                <div class="bg-amber-50/50 border border-amber-200/60 p-3 rounded-xl flex items-start gap-2 text-xs text-amber-900">
+                    <span class="text-amber-600">🔒</span>
+                    <p><strong>ความปลอดภัยฝั่งผู้จอง:</strong> ระบบจะตรวจสอบเบอร์โทรศัพท์ผ่านรหัส OTP เพื่อความน่าเชื่อถือและป้องกันการจองหลอกลวง</p>
+                </div>
+            </div>
+
+            <button onclick="confirmBookingToPayment()" class="w-full mt-5 bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">ยืนยันการจองและไปหน้าชำระเงิน</button>
+        </div>
+    </div>
+
+    <!-- Modal หน้าจอการชำระเงิน -->
+    <div id="paymentModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 relative shadow-xl">
+            <button onclick="closePayment()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div class="mb-4">
+                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <span>💳</span> ช่องทางการชำระเงินค่าบริการ
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">เลือกวิธีชำระเงินเพื่อยืนยันคิวงานกับผู้ให้บริการของคุณ</p>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl space-y-2 mb-4 text-xs text-slate-700 border">
+                <div class="flex justify-between">
+                    <span>ผู้ให้บริการ:</span>
+                    <span id="payNurseName" class="font-bold text-slate-900"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span>อัตราค่าบริการ:</span>
+                    <span id="payNurseRate" class="font-bold text-teal-700"></span>
+                </div>
+                <hr class="my-1">
+                <div class="flex justify-between text-sm font-bold">
+                    <span>ยอดรวมสุทธิ:</span>
+                    <span class="text-teal-600">950 บาท (รวมค่าบริการระบบ)</span>
+                </div>
+            </div>
+
+            <div class="space-y-3 mb-5">
+                <label class="block text-xs font-semibold text-slate-700">เลือกวิธีชำระเงิน:</label>
+                <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-teal-50/50 transition">
+                    <input type="radio" name="payMethod" checked class="text-teal-600">
+                    <div class="text-xs">
+                        <p class="font-bold text-slate-800">📱 QR Code PromptPay (สแกนจ่ายผ่านแอปธนาคาร)</p>
+                        <p class="text-slate-500">ฟรีค่าธรรมเนียม ยืนยันสลิปอัตโนมัติ</p>
+                    </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-teal-50/50 transition">
+                    <input type="radio" name="payMethod" class="text-teal-600">
+                    <div class="text-xs">
+                        <p class="font-bold text-slate-800">💳 บัตรเครดิต / เดบิต</p>
+                        <p class="text-slate-500">รองรับ Visa, Mastercard, JCB</p>
+                    </div>
+                </label>
+            </div>
+
+            <button onclick="finalizePayment()" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">ชำระเงินและเสร็จสิ้นการจอง</button>
+        </div>
+    </div>
+
+    <!-- Modal เข้าสู่ระบบ / สมัครสมาชิก (ผู้จอง) พร้อมระบบ OTP -->
+    <div id="customerAuthModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 relative shadow-xl">
+            <button onclick="closeCustomerAuth()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div class="mb-4">
+                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <span>👤</span> เข้าสู่ระบบ / สมัครสมาชิก (ผู้จอง)
+                </h3>
+                <p id="authSubText" class="text-xs text-slate-500 mt-1">ยืนยันตัวตนด้วยเบอร์โทรศัพท์มือถือเพื่อเข้าถึงประวัติการจอง</p>
+            </div>
+            
+            <form id="authPhoneForm" onsubmit="requestOtp(event)" class="space-y-4 text-sm text-slate-700">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์มือถือ</label>
+                    <input type="tel" id="userPhoneInput" required placeholder="089-123-xxxx" class="w-full p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">รับรหัส OTP</button>
+            </form>
+
+            <form id="authOtpForm" onsubmit="verifyOtp(event)" class="space-y-4 text-sm text-slate-700 hidden">
+                <div class="bg-teal-50 p-3 rounded-xl text-xs text-teal-800 mb-2">
+                    ระบบได้ส่งรหัส OTP (จำลอง: <strong>1234</strong>) ไปยังเบอร์ <span id="displayPhone" class="font-bold"></span> แล้ว
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">กรอกรหัส OTP 4 หลัก</label>
+                    <input type="text" id="otpInput" required maxlength="4" placeholder="1234" class="w-full p-3 border rounded-xl text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">ยืนยันรหัส OTP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal สมัครเป็นผู้ให้บริการ -->
+    <div id="registerModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
+            <button onclick="closeRegister()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div class="mb-4">
+                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <span>📝</span> ลงทะเบียนสมัครเป็นผู้ให้บริการ (ฟรีแลนซ์)
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">กรอกข้อมูลประวัติและใบประกอบวิชาชีพเพื่อเข้ารับการตรวจสอบความปลอดภัย</p>
+            </div>
+
+            <form onsubmit="submitProviderRegister(event)" class="space-y-4 text-sm text-slate-700">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อ - นามสกุลจริง</label>
+                        <input type="text" required placeholder="เช่น พว. สมชาย รักษาดี" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เลือกตำแหน่งที่ต้องการสมัคร</label>
+                        <select required class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                            <option value="">-- เลือกตำแหน่ง --</option>
+                            <option value="rn">พยาบาลวิชาชีพ (RN)</option>
+                            <option value="pn">ผู้ช่วยพยาบาล (PN)</option>
+                            <option value="caregiver">Caregiver - ผู้ดูแลผู้สูงอายุ</option>
+                            <option value="babysitter">พี่เลี้ยงเด็ก / Babysitter</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เลขที่ใบประกอบวิชาชีพ / ใบประกาศนียบัตร</label>
+                        <input type="text" required placeholder="เช่น 1420XXXX หรือ PN-558XX" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์มือถือ (ใช้เข้าสู่ระบบ)</label>
+                        <input type="tel" id="regPhoneInput" required placeholder="089-123-xxxx" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">สถานที่ทำงานเดิม / แหล่งฝึกอบรม</label>
+                        <input type="text" placeholder="เช่น โรงพยาบาลเอกชน หรือศูนย์ดูแล..." class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">อัตราค่าบริการที่ต้องการ (บาท/กะ)</label>
+                        <input type="text" placeholder="เช่น 800 บาท/กะ" class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ประวัติความเชี่ยวชาญและผลงาน (เขียนบรรยาย)</label>
+                    <textarea rows="3" placeholder="เช่น มีความชำนาญเรื่องการทำแผลกดทับ การเคลื่อนย้ายผู้ป่วย และใจเย็น..." class="w-full p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"></textarea>
+                </div>
+
+                <div class="bg-blue-50/60 border border-blue-200/80 p-3 rounded-xl flex items-start gap-2 text-xs text-blue-900">
+                    <span class="text-blue-600 font-bold">🛡️</span>
+                    <p><strong>ข้อกำหนดความปลอดภัย:</strong> ท่านยินยอมให้ทีมงาน CareLink ตรวจสอบประวัติอาชญากรรมจากสำนักงานตำรวจแห่งชาติและตรวจใบประกอบวิชาชีพก่อนอนุมัติแสดงโปรไฟล์</p>
+                </div>
+
+                <button type="submit" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">ส่งข้อมูลสมัครสมาชิกเพื่อตรวจสอบ</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal เข้าสู่ระบบสำหรับผู้ให้บริการ -->
+    <div id="providerLoginModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 relative shadow-xl">
+            <button onclick="closeProviderLogin()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div class="mb-4">
+                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <span>🔐</span> เข้าสู่ระบบผู้ให้บริการ (ฟรีแลนซ์)
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">กรอกเบอร์โทรศัพท์ที่ใช้ลงทะเบียนเพื่อเข้าจัดการคิวงานและตรวจสอบรายได้</p>
+            </div>
+
+            <form onsubmit="submitProviderLogin(event)" class="space-y-4 text-sm text-slate-700">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์มือถือ</label>
+                    <input type="tel" id="loginPhoneInput" required placeholder="0xx-xxx-xxxx" class="w-full p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่าน / PIN 4 หลัก</label>
+                    <input type="password" required maxlength="4" placeholder="••••" class="w-full p-3 border rounded-xl text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 text-white py-3 rounded-xl font-medium hover:bg-teal-700 transition shadow-md">เข้าสู่ระบบผู้ให้บริการ</button>
+            </form>
+            
+            <div class="mt-4 text-center">
+                <button onclick="openRegister(); closeProviderLogin();" class="text-xs text-teal-600 hover:underline font-medium">ยังไม่มีบัญชีผู้ให้บริการ? สมัครสมาชิกที่นี่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-400 py-8 text-center text-sm mt-12">
+        <p>&copy; 2026 CareLink Platform. ระบบจับคู่บุคลากรทางการแพทย์และพี่เลี้ยงเด็กครอบคลุม 77 จังหวัดทั่วไทย</p>
+    </footer>
+
+    <!-- JavaScript ระบบประมวลผล -->
+    <script>
+        const provinces = [
+            "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "ยะลา", "ยโสธร", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี", "เชียงราย", "เชียงใหม่", "แม่ฮ่องสอน"
+        ];
+
+        const provinceSelect = document.getElementById('provinceSelect');
+        provinces.forEach(prov => {
+            let opt = document.createElement('option');
+            opt.value = prov;
+            opt.textContent = prov;
+            provinceSelect.appendChild(opt);
+        });
+
+        let allProviders = [];
+        const firstNames = ["สมศรี", "มานพ", "ก้อย", "มิว", "สุดา", "วิชัย", "กุล", "นิรมล", "ธนกร", "ปิยะ", "อรุณ", "รัตนา", "ชูใจ", "กานดา", "สุรศักดิ์", "นภา", "วิทยา", "พรทิพย์", "กิตติ", "นันทนา"];
+        const lastNames = ["ใจดี", "รักกิจ", "สุขสบาย", "มั่นคง", "พงษ์สุวรรณ", "เจริญสุข", "คงคา", "ดีงาม", "ทรัพย์สิน"];
+        const roles = [
+            { title: "พยาบาลวิชาชีพ (RN)", code: "RN", rate: "1,000 บาท/กะ", icon: "👩‍⚕️" },
+            { title: "ผู้ช่วยพยาบาล (PN)", code: "PN", rate: "750 บาท/กะ", icon: "🧑‍⚕️" },
+            { title: "Caregiver (ผู้ดูแลผู้สูงอายุ)", code: "CG", rate: "600 บาท/กะ", icon: "👵" },
+            { title: "พี่เลี้ยงเด็ก / Babysitter", code: "BABY", rate: "700 บาท/กะ", icon: "👶" }
+        ];
+
+        // คลังรีวิว 5 ท่านไม่ซ้ำกันต่อคน (ระบบจะสุ่มเลือกหรือจับคู่ให้มีความหลากหลายตามประเภทงาน)
+        const reviewPools = [
+            { name: "คุณกุล (ญาติผู้ป่วยติดเตียง)", text: "ประทับใจคุณพยาบาลมากๆ ครับ คอยพลิกตัวและทำความสะอาดแผลกดทับให้อย่างประณีต มือเบามาก และให้คำแนะนำโภชนาการละเอียด", date: "15 ส.ค. 2569" },
+            { name: "คุณแม่น้องต้นกล้า", text: "จ้างมาดูแลช่วงคุณแม่ผ่าตัดใหญ่ คอยวัดสัญญาณชีพและรายงานอาการทางไลน์ตลอดเวลา ทำให้ครอบครัวคลายความกังวลไปได้เยอะเลยค่ะ", date: "28 ส.ค. 2569" },
+            { name: "คุณธนภัทร (ลูกชายผู้สูงอายุ)", text: "คุณผู้ดูแลมีความใจเย็นและอัธยาศัยดีเยี่ยม พาคุณพ่อเดินออกกำลังกายและพูดคุยยิ้มแย้มตลอดเวลา สุขภาพจิตคุณพ่อดีขึ้นมากครับ", date: "2 ก.ย. 2569" },
+            { name: "คุณพิม (คุณแม่ลูกอ่อน)", text: "พี่เลี้ยงเด็กมีความสะอาด อ่อนโยน เข้าใจพัฒนาการเด็กเล็ก สอนน้องทำกิจกรรมเสริมทักษะเก่งมาก ไว้ใจและปลอดภัยสุดๆ ค่ะ", date: "30 ส.ค. 2569" },
+            { name: "คุณวิชัย (สามีผู้ป่วยพักฟื้น)", text: "ตรงต่อเวลามากๆ แต่งกายสุภาพเรียบร้อย ปฏิบัติตามคำสั่งแพทย์อย่างเคร่งครัด บริการเป็นมืออาชีพสมราคาคุยครับ แนะนำเลย", date: "25 ส.ค. 2569" }
+        ];
+
+        provinces.forEach(prov => {
+            for (let i = 1; i <= 52; i++) {
+                let fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                let lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                let roleObj = roles[Math.floor(Math.random() * roles.length)];
+                let rating = (4.5 + Math.random() * 0.5).toFixed(1);
+                
+                // สุ่มดึงรีวิว 5 คนไม่ซ้ำกันจากคลังรีวิว
+                let shuffledReviews = [...reviewPools].sort(() => 0.5 - Math.random()).slice(0, 5);
+
+                allProviders.push({
+                    id: `${roleObj.code}-${prov}-${i}`,
+                    name: `คุณ${fName} ${lName}`,
+                    role: roleObj.title,
+                    shortRole: roleObj.code,
+                    province: prov,
+                    exp: `${Math.floor(2 + Math.random() * 7)} ปี`,
+                    licenseId: `${roleObj.code}-${Math.floor(10000 + Math.random() * 90000)}`,
+                    rating: `⭐ ${rating} (50+ รีวิว)`,
+                    desc: `มีความเชี่ยวชาญพิเศษในการปฏิบัติงานในพื้นที่จังหวัด${prov} อ่อนโยน ตรงต่อเวลา ได้รับการอบรมและตรวจสอบประวัติอาชญากรรมเรียบร้อยแล้ว`,
+                    rate: roleObj.rate,
+                    icon: roleObj.icon,
+                    reviews: shuffledReviews
+                });
+            }
+        });
+
+        let currentPage = 1;
+        const itemsPerPage = 12;
+        let currentFilteredList = allProviders;
+
+        function renderNurses() {
+            const grid = document.getElementById('nurseGrid');
+            grid.innerHTML = '';
+
+            let start = (currentPage - 1) * itemsPerPage;
+            let end = start + itemsPerPage;
+            let pageItems = currentFilteredList.slice(start, end);
+
+            if(pageItems.length === 0) {
+                grid.innerHTML = `<p class="col-span-4 text-center text-slate-500 py-10">ไม่พบข้อมูลผู้ให้บริการในเงื่อนไขที่ค้นหา</p>`;
+                document.getElementById('paginationContainer').innerHTML = '';
+                return;
+            }
+
+            pageItems.forEach(p => {
+                let card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-lg">${p.icon}</div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-800">${p.name}</h3>
+                                <p class="text-[11px] text-teal-600 bg-teal-50 inline-block px-2 py-0.5 rounded-full mt-0.5 font-medium">✓ ${p.role}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-600 mb-4 bg-slate-50 p-2.5 rounded-xl">
+                            <p>📍 พื้นที่: <span class="font-semibold text-slate-700">${p.province}</span></p>
+                            <p>🆔 รหัส: <span class="font-mono">${p.licenseId}</span></p>
+                            <p>🎯 ประสบการณ์: ${p.exp}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs font-medium border-t pt-3">
+                        <span class="text-slate-600">${p.rating}</span>
+                        <button onclick='openProfile(${JSON.stringify(p)})' class="text-teal-600 hover:underline font-semibold">ดูประวัติ & จอง</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const container = document.getElementById('paginationContainer');
+            container.innerHTML = '';
+            let totalPages = Math.ceil(currentFilteredList.length / itemsPerPage);
+
+            if(currentPage > 1) {
+                container.innerHTML += `<button onclick="changePage(${currentPage - 1})" class="px-3 py-1.5 bg-white border rounded-xl text-xs hover:bg-teal-50">ก่อนหน้า</button>`;
+            }
+            container.innerHTML += `<span class="px-3 py-1.5 text-xs font-semibold text-slate-600">หน้า ${currentPage} จาก ${totalPages}</span>`;
+            if(currentPage < totalPages) {
+                container.innerHTML += `<button onclick="changePage(${currentPage + 1})" class="px-3 py-1.5 bg-white border rounded-xl text-xs hover:bg-teal-50">ถัดไป</button>`;
+            }
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            renderNurses();
+            window.scrollTo({ top: 400, behavior: 'smooth' });
+        }
+
+        function searchNurse() {
+            const service = document.getElementById('serviceType').value;
+            const province = document.getElementById('provinceSelect').value;
+
+            currentFilteredList = allProviders.filter(p => {
+                let matchService = !service || (
+                    (service === 'rn' && p.shortRole === 'RN') ||
+                    (service === 'pn' && p.shortRole === 'PN') ||
+                    (service === 'caregiver' && p.shortRole === 'CG') ||
+                    (service === 'babysitter' && p.shortRole === 'BABY')
+                );
+                let matchProvince = !province || p.province === province;
+                return matchService && matchProvince;
+            });
+
+            currentPage = 1;
+            renderNurses();
+            document.getElementById('nurses').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function scrollToNurses() {
+            document.getElementById('nurses').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showSection(sectionId) {
+            if(sectionId === 'home') {
+                document.getElementById('section-home').classList.remove('hidden');
+                document.getElementById('section-services').classList.add('hidden');
+                document.getElementById('section-customer-dashboard').classList.add('hidden');
+            } else if(sectionId === 'services') {
+                document.getElementById('section-home').classList.add('hidden');
+                document.getElementById('section-services').classList.remove('hidden');
+                document.getElementById('section-customer-dashboard').classList.add('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if(sectionId === 'customer-dashboard') {
+                document.getElementById('section-home').classList.add('hidden');
+                document.getElementById('section-services').classList.add('hidden');
+                document.getElementById('section-customer-dashboard').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        let selectedNurse = null;
+        let loggedInCustomerPhone = null;
+        let customerBookings = [];
+
+        function openProfile(provider) {
+            selectedNurse = provider;
+            document.getElementById('modalIcon').textContent = provider.icon;
+            document.getElementById('modalName').textContent = provider.name;
+            document.getElementById('modalRole').textContent = `${provider.role} (พื้นที่ ${provider.province})`;
+            document.getElementById('modalId').textContent = provider.licenseId;
+            document.getElementById('modalExp').textContent = provider.exp;
+            document.getElementById('modalRating').textContent = provider.rating;
+            document.getElementById('modalRate').textContent = provider.rate;
+            document.getElementById('modalDesc').textContent = provider.desc;
+
+            // เรนเดอร์รีวิวทั้ง 5 คนของพยาบาลท่านนี้
+            const reviewContainer = document.getElementById('reviewListContainer');
+            reviewContainer.innerHTML = '';
+            provider.reviews.forEach(rev => {
+                let revHtml = `
+                    <div class="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-800 text-xs">${rev.name}</span>
+                            <span class="text-amber-500 text-xs font-bold">⭐⭐⭐⭐⭐ (5.0/5.0)</span>
+                        </div>
+                        <p class="text-slate-600 text-xs italic leading-relaxed">"${rev.text}"</p>
+                        <p class="text-[10px] text-slate-400">ใช้บริการเมื่อ: ${rev.date}</p>
+                    </div>
+                `;
+                reviewContainer.insertAdjacentHTML('beforeend', revHtml);
+            });
+
+            document.getElementById('profileModal').classList.remove('hidden');
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        function openBooking() {
+            if(!selectedNurse) return;
+            document.getElementById('bookModalName').textContent = selectedNurse.name + ` (${selectedNurse.role})`;
+            document.getElementById('bookModalRate').textContent = selectedNurse.rate;
+            if(loggedInCustomerPhone) {
+                document.getElementById('bookerPhone').value = loggedInCustomerPhone;
+            }
+            document.getElementById('bookingModal').classList.remove('hidden');
+        }
+
+        function closeBooking() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function toggleHourlyInput() {
+            const shiftSelect = document.getElementById('workShiftSelect');
+            const hourlyContainer = document.getElementById('hourlyInputContainer');
+            if (shiftSelect.value === 'รายชั่วโมง') {
+                hourlyContainer.classList.remove('hidden');
+            } else {
+                hourlyContainer.classList.add('hidden');
+            }
+        }
+
+        function confirmBookingToPayment() {
+            if(!selectedNurse) return;
+            const name = document.getElementById('bookerName').value;
+            const phone = document.getElementById('bookerPhone').value;
+            if(!name || !phone) {
+                alert('กรุณากรอกชื่อผู้จองและเบอร์โทรศัพท์มือถือให้ครบถ้วนก่อนยืนยัน');
+                return;
+            }
+
+            document.getElementById('payNurseName').textContent = selectedNurse.name + ` (${selectedNurse.role})`;
+            document.getElementById('payNurseRate').textContent = selectedNurse.rate;
+
+            closeBooking();
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePayment() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function finalizePayment() {
+            const name = document.getElementById('bookerName').value;
+            const phone = document.getElementById('bookerPhone').value;
+            const shift = document.getElementById('workShiftSelect').value;
+            const address = document.getElementById('bookAddressInput').value || 'กรุงเทพมหานคร';
+
+            customerBookings.unshift({
+                id: `#CL-${Math.floor(10000 + Math.random() * 90000)}`,
+                nurseName: selectedNurse.name + ` (${selectedNurse.role})`,
+                shift: shift,
+                address: address,
+                status: 'กำลังปฏิบัติงาน',
+                price: '950 บาท'
+            });
+
+            if(!loggedInCustomerPhone) {
+                loggedInCustomerPhone = phone;
+                updateCustomerNavState();
+            }
+
+            updateDashboardBookings();
+
+            alert('ชำระเงินสำเร็จ! ระบบได้บันทึกคำขอจองและเพิ่มข้อมูลลงในแดชบอร์ดของคุณเรียบร้อยแล้ว');
+            closePayment();
+            closeProfile();
+            showSection('customer-dashboard');
+        }
+
+        function updateCustomerNavState() {
+            if(loggedInCustomerPhone) {
+                document.getElementById('customerAuthBtnArea').classList.add('hidden');
+                document.getElementById('customerProfileArea').classList.remove('hidden');
+                document.getElementById('navCustomerPhone').textContent = loggedInCustomerPhone;
+                document.getElementById('dashPhoneDisplay').textContent = loggedInCustomerPhone;
+            } else {
+                document.getElementById('customerAuthBtnArea').classList.remove('hidden');
+                document.getElementById('customerProfileArea').classList.add('hidden');
+            }
+        }
+
+        function logoutCustomer() {
+            loggedInCustomerPhone = null;
+            updateCustomerNavState();
+            showSection('home');
+            alert('ออกจากระบบผู้จองเรียบร้อยแล้ว');
+        }
+
+        function updateDashboardBookings() {
+            const container = document.getElementById('myBookingListContainer');
+            document.getElementById('statActiveCount').textContent = `${customerBookings.length} รายการ`;
+            document.getElementById('statTotalCount').textContent = `${customerBookings.length + 1} รายการ`;
+
+            container.innerHTML = '';
+            customerBookings.forEach(b => {
+                let html = `
+                    <div class="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-teal-100 text-teal-700 text-[11px] font-bold px-2 py-0.5 rounded">${b.status}</span>
+                                <span class="text-xs text-slate-400">รหัสจอง: ${b.id}</span>
+                            </div>
+                            <h4 class="font-bold text-base text-slate-800">${b.nurseName}</h4>
+                            <p class="text-xs text-slate-600">📍 สถานที่: ${b.address}</p>
+                            <p class="text-xs text-slate-500">⏰ รูปแบบ: ${b.shift}</p>
+                        </div>
+                        <div class="flex flex-col gap-2 w-full md:w-auto">
+                            <span class="text-xs font-bold text-teal-700 text-right">${b.price} (ชำระแล้ว)</span>
+                            <button onclick="alert('ระบบกำลังเชื่อมต่อแชทตรงกับผู้ให้บริการ...')" class="bg-white border border-teal-600 text-teal-600 px-4 py-2 rounded-xl text-xs font-medium hover:bg-teal-50 transition">
+                                💬 ติดต่อผู้ให้บริการ
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function openCustomerAuth() {
+            document.getElementById('authPhoneForm').classList.remove('hidden');
+            document.getElementById('authOtpForm').classList.add('hidden');
+            document.getElementById('authSubText').textContent = 'ยืนยันตัวตนด้วยเบอร์โทรศัพท์มือถือเพื่อเข้าถึงประวัติการจอง';
+            document.getElementById('customerAuthModal').classList.remove('hidden');
+        }
+        function closeCustomerAuth() {
+            document.getElementById('customerAuthModal').classList.add('hidden');
+        }
+
+        function requestOtp(e) {
+            e.preventDefault();
+            const phone = document.getElementById('userPhoneInput').value;
+            if(!phone) return;
+            
+            document.getElementById('displayPhone').textContent = phone;
+            document.getElementById('authPhoneForm').classList.add('hidden');
+            document.getElementById('authOtpForm').classList.remove('hidden');
+            document.getElementById('authSubText').textContent = 'กรุณากรอกรหัส OTP ที่ได้รับทาง SMS';
+        }
+
+        function verifyOtp(e) {
+            e.preventDefault();
+            const otp = document.getElementById('otpInput').value;
+            const phone = document.getElementById('userPhoneInput').value;
+            if(otp === '1234') {
+                loggedInCustomerPhone = phone;
+                updateCustomerNavState();
+                alert('เข้าสู่ระบบสำเร็จ!');
+                closeCustomerAuth();
+                showSection('customer-dashboard');
+            } else {
+                alert('รหัส OTP ไม่ถูกต้อง (ทดสอบระบบให้กรอก: 1234)');
+            }
+        }
+
+        function openRegister() {
+            document.getElementById('registerModal').classList.remove('hidden');
+        }
+        function closeRegister() {
+            document.getElementById('registerModal').classList.add('hidden');
+        }
+
+        function submitProviderRegister(e) {
+            e.preventDefault();
+            const regPhone = document.getElementById('regPhoneInput').value;
+            alert('ส่งข้อมูลสมัครเป็นผู้ให้บริการเรียบร้อย! กรุณาเข้าสู่ระบบด้วยเบอร์โทรศัพท์ของคุณ');
+            closeRegister();
+            document.getElementById('loginPhoneInput').value = regPhone;
+            openProviderLogin();
+        }
+
+        function openProviderLogin() {
+            document.getElementById('providerLoginModal').classList.remove('hidden');
+        }
+        function closeProviderLogin() {
+            document.getElementById('providerLoginModal').classList.add('hidden');
+        }
+        function submitProviderLogin(e) {
+            e.preventDefault();
+            alert('เข้าสู่ระบบผู้ให้บริการสำเร็จ! ยินดีต้อนรับกลับสู่ระบบ CareLink');
+            closeProviderLogin();
+        }
+
+        function submitReview() {
+            const name = document.getElementById('reviewerName').value.trim();
+            const text = document.getElementById('reviewText').value.trim();
+            
+            if(!name || !text) {
+                alert('กรุณากรอกชื่อและข้อความรีวิวให้ครบถ้วน');
+                return;
+            }
+
+            const container = document.getElementById('reviewListContainer');
+            const newReviewHtml = `
+                <div class="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-800 text-xs">${name} (ยืนยันตัวตนแล้ว)</span>
+                        <span class="text-amber-500 text-xs font-bold">⭐⭐⭐⭐⭐ (5.0/5.0)</span>
+                    </div>
+                    <p class="text-slate-600 text-xs italic leading-relaxed">"${text}"</p>
+                    <p class="text-[10px] text-slate-400">ใช้บริการเมื่อ: วันนี้</p>
+                </div>
+            `;
+            container.insertAdjacentHTML('afterbegin', newReviewHtml);
+            
+            document.getElementById('reviewerName').value = '';
+            document.getElementById('reviewText').value = '';
+            alert('ขอบคุณสำหรับรีวิวของคุณครับ!');
+        }
+
+        customerBookings.push({
+            id: '#CL-89214',
+            nurseName: 'คุณสมศรี ใจดี (พยาบาลวิชาชีพ RN)',
+            shift: 'กะเช้า (08:00 - 20:00 น.)',
+            address: 'กรุงเทพมหานคร',
+            status: 'กำลังปฏิบัติงาน',
+            price: '950 บาท'
+        });
+
+        renderNurses();
+    </script>
+</body>
+</html>
